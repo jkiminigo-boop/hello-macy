@@ -30,7 +30,7 @@ const THEMES = {
   },
 };
 
-const ThemeCtx = createContext({ tv: THEMES.light, isDark: false });
+const ThemeCtx = createContext({ tv: THEMES.light, isDark: false, topLevelSteps: [] });
 const useTV    = () => useContext(ThemeCtx);
 
 /* ─── Accent colours ─────────────────────────────────────────────────────── */
@@ -59,13 +59,19 @@ const OPT_CL = [
   {bg:"#F0FAF5",br:"#0F6E56",tx:"#085041",num:"#1D9E75"},
   {bg:"#FEF2F2",br:"#A32D2D",tx:"#791F1F",num:"#E24B4A"},
   {bg:"#FFFBEB",br:"#854F0B",tx:"#633806",num:"#BA7517"},
+  {bg:"#EEF5FD",br:"#185FA5",tx:"#0C447C",num:"#378ADD"},
+  {bg:"#F0EFFE",br:"#534AB7",tx:"#3C3489",num:"#7F77DD"},
+  {bg:"#FDF0F5",br:"#993556",tx:"#72243E",num:"#D4537E"},
 ];
 const OPT_CD = [
-  {bg:"rgba(0,40,24,.05)",  br:"#2DBF8A",tx:"#6EE7B7",num:"#1D9E75"},
-  {bg:"rgba(26,5,5,.05)",   br:"#CF4C4C",tx:"#FCA5A5",num:"#E24B4A"},
-  {bg:"rgba(30,16,5,.05)",  br:"#D97706",tx:"#FCD34D",num:"#BA7517"},
+  {bg:"rgba(0,40,24,.05)",   br:"#2DBF8A",tx:"#6EE7B7",num:"#1D9E75"},
+  {bg:"rgba(26,5,5,.05)",    br:"#CF4C4C",tx:"#FCA5A5",num:"#E24B4A"},
+  {bg:"rgba(30,16,5,.05)",   br:"#D97706",tx:"#FCD34D",num:"#BA7517"},
+  {bg:"rgba(10,31,51,.05)",  br:"#4A9FD5",tx:"#93C5FD",num:"#4A9FD5"},
+  {bg:"rgba(20,16,60,.05)",  br:"#8B80E8",tx:"#C4B5FD",num:"#8B80E8"},
+  {bg:"rgba(37,10,20,.05)",  br:"#E07598",tx:"#FBCFE8",num:"#E07598"},
 ];
-const getOptC  = (i, d) => d ? OPT_CD[i%3] : OPT_CL[i%3];
+const getOptC  = (i, d) => d ? OPT_CD[i%6] : OPT_CL[i%6];
 
 const HDL_CL = {
   "INBOX & TRIAGE SPECIALIST": {bg:"#EEEDFE",br:"#534AB7",tx:"#3C3489"},
@@ -82,7 +88,7 @@ const HANDLERS = ["INBOX & TRIAGE SPECIALIST","RESOLUTION SPECIALIST"];
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 const uid    = () => Math.random().toString(36).slice(2,9);
 const mkStep = () => ({id:uid(),title:"",detail:"",important:false,handler:"",options:[]});
-const mkOpt  = () => ({id:uid(),label:"",note:"",handler:"",endsFlow:false,steps:[]});
+const mkOpt  = () => ({id:uid(),label:"",note:"",handler:"",endsFlow:false,steps:[],mergeToStepId:null});
 const pA = (a,id,p) => a.map(x => x.id===id?{...x,...p}:x);
 const rA = (a,id)   => a.filter(x => x.id!==id);
 const mA = (a,id,d) => {
@@ -93,12 +99,16 @@ const mA = (a,id,d) => {
 const parseSteps = (json) => {
   try { return JSON.parse(json||"[]"); } catch { return []; }
 };
-const advStack = s => {
+const advStack = (s, topSteps=[]) => {
   if(!s.length) return {s:[],e:true,n:"All steps completed."};
   const t=s[s.length-1],ni=t.index+1;
   if(ni<t.steps.length) return {s:[...s.slice(0,-1),{...t,index:ni}],e:false,n:""};
+  if(t.mergeToStepId && topSteps.length){
+    const idx=topSteps.findIndex(x=>x.id===t.mergeToStepId);
+    if(idx>=0) return {s:[{steps:topSteps,index:idx,optionLabel:null,endsFlow:true,endNote:"All steps completed.",mergeToStepId:null}],e:false,n:""};
+  }
   if(t.endsFlow) return {s:s.slice(0,-1),e:true,n:t.endNote||"Branch ended."};
-  return advStack(s.slice(0,-1));
+  return advStack(s.slice(0,-1),topSteps);
 };
 
 /* ─── Font (loaded once) ─────────────────────────────────────────────────── */
@@ -467,16 +477,26 @@ export default function SOPTool() {
   const saveH    = ()=>setHist(h=>[...h,{stack,ended,endNote}]);
   const chooseOpt = opt=>{
     saveH();
+    const topSteps=sel?.steps||[];
     if(opt.steps?.length>0){
-      setStack(s=>[...s,{steps:opt.steps,index:0,optionLabel:opt.label,endsFlow:opt.endsFlow,endNote:opt.note||"Branch ended."}]);
+      setStack(s=>[...s,{steps:opt.steps,index:0,optionLabel:opt.label,
+        endsFlow:opt.endsFlow&&!opt.mergeToStepId,
+        endNote:opt.note||"Branch ended.",
+        mergeToStepId:opt.mergeToStepId||null}]);
       setEnded(false); setEndNote("");
+    } else if(opt.mergeToStepId){
+      const idx=topSteps.findIndex(s=>s.id===opt.mergeToStepId);
+      if(idx>=0){
+        setStack([{steps:topSteps,index:idx,optionLabel:null,endsFlow:true,endNote:"All steps completed.",mergeToStepId:null}]);
+        setEnded(false); setEndNote("");
+      } else { const r=advStack(stack,topSteps); setStack(r.s); setEnded(r.e); setEndNote(r.n); }
     } else if(opt.endsFlow){
       setEnded(true); setEndNote(opt.note||"This branch has ended.");
     } else {
-      const r=advStack(stack); setStack(r.s); setEnded(r.e); setEndNote(r.n);
+      const r=advStack(stack,topSteps); setStack(r.s); setEnded(r.e); setEndNote(r.n);
     }
   };
-  const goNext=()=>{saveH();const r=advStack(stack);setStack(r.s);setEnded(r.e);setEndNote(r.n);};
+  const goNext=()=>{saveH();const r=advStack(stack,sel?.steps||[]);setStack(r.s);setEnded(r.e);setEndNote(r.n);};
   const goBack=()=>{
     if(!hist.length)return;
     const p=hist[hist.length-1];setStack(p.stack);setEnded(p.ended);setEndNote(p.endNote);
@@ -625,7 +645,8 @@ export default function SOPTool() {
                         <div style={{display:"flex",flexDirection:"column",gap:8}}>
                           {curStep.options.map((opt,oi)=>{
                             const oc=getOptC(oi,isDark);
-                            const tag=opt.steps?.length>0?`→ ${opt.steps.length} follow-up step${opt.steps.length>1?"s":""}`:opt.endsFlow?"→ ends flow":"→ continues";
+                            const mergeI=opt.mergeToStepId?(sel?.steps||[]).findIndex(s=>s.id===opt.mergeToStepId):-1;
+                            const tag=opt.mergeToStepId&&mergeI>=0?`↳ merges to Step ${mergeI+1}`:opt.steps?.length>0?`→ ${opt.steps.length} follow-up step${opt.steps.length>1?"s":""}`:opt.endsFlow?"→ ends flow":"→ continues";
                             return (
                               <button key={opt.id} onClick={()=>chooseOpt(opt)}
                                 style={{textAlign:"left",padding:"10px 14px",background:oc.bg,border:`1px solid ${oc.br}40`,borderRadius:6,cursor:"pointer"}}>
