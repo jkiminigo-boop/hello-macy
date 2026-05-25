@@ -74,10 +74,11 @@ function stepBox(step, idx, bx, by, col) {
   const inner       = SW - 60;
   const titleLines  = wrap(step.title||"Untitled", inner, 12);
   const detailLines = step.detail ? wrap(step.detail, inner, 10).slice(0,3) : [];
-  const h = Math.max(74,
-    30 + titleLines.length*17
-    + (detailLines.length ? detailLines.length*13+4 : 0)
-    + (step.handler ? 18 : 0));
+  const HANDLER_H = step.handler ? 24 : 0;
+  const h = Math.max(80,
+    34 + titleLines.length*18
+    + (detailLines.length ? detailLines.length*14+6 : 0)
+    + HANDLER_H);
 
   let s = `<filter id="sh${idx}"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/></filter>`;
   s += `<rect x="${rd(bx)}" y="${rd(by)}" width="${SW}" height="${h}" rx="7" fill="white" stroke="${col.br}" stroke-width="1.5" filter="url(#sh${idx})"/>`;
@@ -95,14 +96,15 @@ function stepBox(step, idx, bx, by, col) {
   const dy = by+22+titleLines.length*17+4;
   detailLines.forEach((l,li) => { s += tx(bx+50, dy+li*13, l, 10, "#6B7280"); });
 
-  // Handler badge
+  // Handler badge — reserved space at bottom, always visible
   if (step.handler) {
-    const short = step.handler==="INBOX & TRIAGE SPECIALIST"?"Inbox & Triage":"Resolution";
+    const short = step.handler==="INBOX & TRIAGE SPECIALIST"?"Inbox & Triage Specialist":"Resolution Specialist";
     const hc    = step.handler==="INBOX & TRIAGE SPECIALIST"
-      ? {bg:"#EEEDFE",tx:"#3C3489"} : {bg:"#E1F5EE",tx:"#085041"};
-    const hy = by+h-15; const hw = short.length*5.8+14;
-    s += `<rect x="${rd(bx+50)}" y="${rd(hy)}" width="${rd(hw)}" height="13" rx="3" fill="${hc.bg}"/>`;
-    s += tx(bx+57, hy+9.5, short, 8, hc.tx);
+      ? {bg:"#EEEDFE",br:"#534AB7",tx:"#3C3489"} : {bg:"#E1F5EE",br:"#0F6E56",tx:"#085041"};
+    const hy = by+h-20;
+    const hw = short.length*5.6+16;
+    s += `<rect x="${rd(bx+50)}" y="${rd(hy)}" width="${rd(hw)}" height="16" rx="4" fill="${hc.bg}" stroke="${hc.br}" stroke-width="0.5"/>`;
+    s += tx(bx+58, hy+11, short, 8.5, hc.tx, "600");
   }
 
   // Important badge
@@ -122,10 +124,12 @@ function optBox(opt, oi, bx, by, topSteps) {
   const noteLines   = opt.note ? wrap(opt.note, inner, 10).slice(0,2) : [];
   const isMerge     = !!opt.mergeToStepId;
   const mergeIdx    = isMerge ? (topSteps||[]).findIndex(s=>s.id===opt.mergeToStepId) : -1;
-  const h = Math.max(60,
-    26 + labelLines.length*15
-    + (noteLines.length ? noteLines.length*13+2 : 0)
-    + (opt.endsFlow||isMerge ? 14 : 0));
+  const OPT_HANDLER_H = opt.handler ? 20 : 0;
+  const h = Math.max(64,
+    28 + labelLines.length*15
+    + (noteLines.length ? noteLines.length*13+4 : 0)
+    + (opt.endsFlow||isMerge ? 14 : 0)
+    + OPT_HANDLER_H);
 
   let s = `<rect x="${rd(bx)}" y="${rd(by)}" width="${OW}" height="${h}" rx="5" fill="${c.bg}" stroke="${c.br}" stroke-width="1"/>`;
   if (isMerge) {
@@ -151,10 +155,15 @@ function optBox(opt, oi, bx, by, topSteps) {
     s += tx(bx+36, by+h-4, "\u21b3 ends flow", 9, c.tx);
   }
 
-  // Handler
+  // Handler badge — bottom left, clearly separated from content
   if (opt.handler) {
-    const short = opt.handler==="INBOX & TRIAGE SPECIALIST"?"Inbox":"Resolution";
-    s += tx(bx+OW-8, by+11, short, 8, c.tx, "normal", "end");
+    const short = opt.handler==="INBOX & TRIAGE SPECIALIST"?"Inbox & Triage":"Resolution";
+    const hc    = opt.handler==="INBOX & TRIAGE SPECIALIST"
+      ? {bg:"#EEEDFE",br:"#534AB7",tx:"#3C3489"} : {bg:"#E1F5EE",br:"#0F6E56",tx:"#085041"};
+    const hy = by+h-17;
+    const hw = short.length*5.2+14;
+    s += `<rect x="${rd(bx+30)}" y="${rd(hy)}" width="${rd(hw)}" height="13" rx="3" fill="${hc.bg}" stroke="${hc.br}" stroke-width="0.5"/>`;
+    s += tx(bx+37, hy+9.5, short, 8, hc.tx, "600");
   }
 
   return {svg:s, h};

@@ -175,11 +175,11 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
   const setSubSteps=s=>onUpdate({steps:s});
   const sub=(opt.steps||[]).length;
   return (
-    <div style={{display:"flex",marginBottom:6}}>
+    <div style={{display:"flex",marginBottom:10}}>
       <div style={{width:3,minWidth:3,background:oc.br,borderRadius:2,marginTop:4,marginRight:10,flexShrink:0}}/>
       <div style={{flex:1,minWidth:0}}>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <span style={{width:18,height:18,minWidth:18,borderRadius:"50%",background:oc.num,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:700,flexShrink:0}}>{oi+1}</span>
+          <span style={{width:22,height:22,minWidth:22,borderRadius:"50%",background:oc.num,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:700,flexShrink:0}}>{oi+1}</span>
           {editing
             ?<input autoFocus value={draft.label} onChange={e=>set("label",e.target.value)} placeholder={`Option ${oi+1} — e.g. "Yes, she agreed"`} style={{flex:1,fontWeight:600,fontSize:12}}/>
             :<span style={{flex:1,fontSize:12,fontWeight:600,color:tv.t1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
@@ -204,7 +204,7 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
         </div>
         {!editing&&opt.note&&<p style={{fontSize:11,color:tv.t2,margin:"3px 0 0 24px",lineHeight:1.55}}>{opt.note}</p>}
         {editing&&(
-          <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:6,paddingLeft:24}}>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8,paddingLeft:28}}>
             <textarea value={draft.note} onChange={e=>set("note",e.target.value)} placeholder="Agent instruction (optional)" rows={2} style={{resize:"vertical"}}/>
             <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
               <select value={draft.handler} onChange={e=>set("handler",e.target.value)} style={{flex:1}}>
@@ -246,15 +246,15 @@ function StepBlock({step,idx,col,mode,onUpdate,onDelete,onUp,onDown}) {
   const hc=step.handler?getHdlC(step.handler,isDark):null;
   const stepBg=isDark?`${col.br}12`:col.bg;
   return (
-    <div style={{marginBottom:8}}>
+    <div style={{marginBottom:12}}>
       <div style={{border:`1px solid ${isEditing?col.br:tv.bd}`,borderRadius:6,background:tv.bg1,overflow:"hidden"}}>
-        <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px"}}>
-          <div style={{width:26,height:26,minWidth:26,borderRadius:"50%",background:stepBg,border:`1px solid ${col.br}`,display:"flex",alignItems:"center",justifyContent:"center",marginTop:2,flexShrink:0,fontSize:11,fontWeight:700,color:col.br}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:14,padding:"16px 16px 14px"}}>
+          <div style={{width:30,height:30,minWidth:30,borderRadius:"50%",background:stepBg,border:`1.5px solid ${col.br}`,display:"flex",alignItems:"center",justifyContent:"center",marginTop:2,flexShrink:0,fontSize:12,fontWeight:700,color:col.br}}>
             {idx+1}
           </div>
           <div style={{flex:1,minWidth:0}}>
             {isEditing?(
-              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 <input autoFocus value={draft.title} onChange={e=>set("title",e.target.value)} placeholder="Step title" style={{fontWeight:600,fontSize:13}}/>
                 <textarea value={draft.detail} onChange={e=>set("detail",e.target.value)} placeholder="Instructions for the agent…" rows={2} style={{resize:"vertical"}}/>
                 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
@@ -292,7 +292,7 @@ function StepBlock({step,idx,col,mode,onUpdate,onDelete,onUp,onDown}) {
           )}
         </div>
         {(mode==="edit"||opts.length>0)&&(
-          <div style={{borderTop:`1px solid ${tv.bd}`,padding:"10px 12px 12px",background:tv.bg2}}>
+          <div style={{borderTop:`1px solid ${tv.bd}`,padding:"14px 16px 18px",background:tv.bg2}}>
             {opts.length>0&&(
               <div style={{marginBottom:mode==="edit"&&opts.length<3?8:0}}>
                 {opts.map((opt,oi)=>(
@@ -304,7 +304,7 @@ function StepBlock({step,idx,col,mode,onUpdate,onDelete,onUp,onDown}) {
               </div>
             )}
             {mode==="edit"&&opts.length<3&&(
-              <button onClick={()=>onUpdate({options:[...opts,mkOpt()]})} style={{width:"100%",borderStyle:"dashed"}}>
+              <button onClick={()=>onUpdate({options:[...opts,mkOpt()]})} style={{width:"100%",borderStyle:"dashed",padding:"7px 10px"}}>
                 <i className="ti ti-plus" aria-hidden="true"/>
                 {opts.length===0?" Add branch option":` Add branch option  (${opts.length} / 3)`}
               </button>
@@ -330,7 +330,7 @@ function StepsList({steps,setSteps,col,mode}) {
         />
       ))}
       {mode==="edit"&&(
-        <button onClick={()=>setSteps([...s,mkStep()])} style={{width:"100%",borderStyle:"dashed",marginTop:s.length?2:0}}>
+        <button onClick={()=>setSteps([...s,mkStep()])} style={{width:"100%",borderStyle:"dashed",marginTop:s.length?6:0,padding:"7px 10px"}}>
           <i className="ti ti-plus" aria-hidden="true"/> Add step
         </button>
       )}
