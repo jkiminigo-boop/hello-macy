@@ -2,6 +2,7 @@ import React, {
   useState, useEffect, useContext, createContext, useRef,
 } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { generateSopPDF } from "./generatePDF";
 import { api } from "../convex/_generated/api";
 
 /* ─── Theme definitions ──────────────────────────────────────────────────── */
@@ -375,6 +376,7 @@ export default function SOPTool() {
   const [newSop,       setNewSop]       = useState({title:"",description:""});
   const [delConfirm,   setDelConfirm]   = useState(null);
   const [hoveredSopId, setHoveredSopId] = useState(null);
+  const [exporting,    setExporting]    = useState(false);
   /* Theme — persisted in localStorage */
   const [theme, setTheme] = useState(()=>localStorage.getItem("sop-theme")||"light");
   useEffect(()=>{ localStorage.setItem("sop-theme",theme); },[theme]);
@@ -671,6 +673,20 @@ export default function SOPTool() {
                   }
                   <button onClick={startFollow} style={{fontSize:12,background:`${col.br}15`,border:`1px solid ${col.br}40`,color:col.br}}>
                     <i className="ti ti-player-play" aria-hidden="true"/> Follow
+                  </button>
+                  <button
+                    onClick={async()=>{
+                      if(!sel||exporting) return;
+                      setExporting(true);
+                      try{ await generateSopPDF(sel); }catch(e){ console.error("PDF export failed",e); }
+                      setExporting(false);
+                    }}
+                    disabled={exporting}
+                    title="Export schematic as PDF"
+                    style={{fontSize:12}}
+                  >
+                    <i className={`ti ${exporting?"ti-loader-2":"ti-file-export"}`} aria-hidden="true"/>
+                    {exporting?" Exporting…":" PDF"}
                   </button>
                 </div>
               </div>
