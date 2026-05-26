@@ -215,7 +215,7 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
             </div>
           )}
         </div>
-        {!editing&&opt.note&&<p style={{fontSize:11,color:tv.t2,margin:"3px 0 4px 28px",lineHeight:1.55}}>{opt.note}</p>}
+        {!editing&&opt.note&&<p style={{fontSize:11,color:tv.t2,margin:"3px 0 4px 28px",lineHeight:1.55,whiteSpace:"pre-wrap"}}>{opt.note}</p>}
         {/* SOP link badge — view mode */}
         {!editing&&linkedSop&&(
           <div style={{margin:"5px 0 3px 28px"}}>
@@ -316,7 +316,7 @@ function StepBlock({step,idx,col,mode,onUpdate,onDelete,onUp,onDown}) {
                   {step.important&&<span style={{fontSize:10,padding:"1px 6px",background:"#FAEEDA",color:"#633806",borderRadius:4,border:"0.5px solid #BA7517"}}>Important</span>}
                   {opts.length>0&&<span style={{fontSize:10,padding:"1px 6px",background:stepBg,color:col.br,borderRadius:4,border:`0.5px solid ${col.br}`}}>{opts.length} branch{opts.length>1?"es":""}</span>}
                 </div>
-                {step.detail&&<p style={{fontSize:12,color:tv.t2,margin:"0 0 5px",lineHeight:1.6}}>{step.detail}</p>}
+                {step.detail&&<p style={{fontSize:12,color:tv.t2,margin:"0 0 5px",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{step.detail}</p>}
                 {hc&&<HandlerBadge handler={step.handler}/>}
               </div>
             )}
@@ -692,7 +692,7 @@ export default function SOPTool() {
                         {curStep.handler&&<HandlerBadge handler={curStep.handler}/>}
                       </div>
                       <h2 style={{fontSize:17,fontWeight:500,margin:"0 0 8px",color:tv.t1}}>{curStep.title}</h2>
-                      <p style={{fontSize:13,color:tv.t2,margin:0,lineHeight:1.7}}>{curStep.detail||"No instructions for this step."}</p>
+                      <p style={{fontSize:13,color:tv.t2,margin:0,lineHeight:1.7,whiteSpace:"pre-wrap"}}>{curStep.detail||"No instructions for this step."}</p>
                     </div>
                     {curStep.options?.length>0?(
                       <div>
@@ -710,7 +710,7 @@ export default function SOPTool() {
                                   <span style={{width:18,height:18,minWidth:18,borderRadius:"50%",background:oc.num,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:700,marginTop:1,flexShrink:0}}>{oi+1}</span>
                                   <div style={{flex:1}}>
                                     <div style={{fontSize:13,fontWeight:600,color:oc.tx}}>{opt.label||`Option ${oi+1}`}</div>
-                                    {opt.note&&<div style={{fontSize:11,color:oc.tx,marginTop:2,opacity:.8,lineHeight:1.5}}>{opt.note}</div>}
+                                    {opt.note&&<div style={{fontSize:11,color:oc.tx,marginTop:2,opacity:.8,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{opt.note}</div>}
                                     <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
                                       <span style={{fontSize:10,color:oc.tx,opacity:.6}}>{tag}</span>
                                       {opt.handler&&<HandlerBadge handler={opt.handler}/>}

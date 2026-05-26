@@ -36,17 +36,22 @@ const esc = s => String(s||"")
   .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
 function wrap(text, maxW, size) {
-  const words = String(text||"").split(" ");
-  const cw    = size * 0.52;
-  const max   = Math.max(1, Math.floor(maxW / cw));
-  const lines = []; let line = "";
-  for (const w of words) {
-    const t = line ? line+" "+w : w;
-    if (t.length > max && line) { lines.push(line); line = w; }
-    else line = t;
+  const cw   = size * 0.52;
+  const max  = Math.max(1, Math.floor(maxW / cw));
+  const out  = [];
+  // respect newlines the user typed
+  for (const para of String(text||"").split("\n")) {
+    if (!para.trim()) { out.push(""); continue; }
+    const words = para.split(" ");
+    let line = "";
+    for (const w of words) {
+      const t = line ? line+" "+w : w;
+      if (t.length > max && line) { out.push(line); line = w; }
+      else line = t;
+    }
+    if (line) out.push(line);
   }
-  if (line) lines.push(line);
-  return lines;
+  return out;
 }
 
 const tx = (x,y,s,sz,fill,weight="normal",anchor="start") =>
@@ -71,13 +76,13 @@ function mW(steps) {
 
 /* ─── Step box ──────────────────────────────────────────────── */
 function stepBox(step, idx, bx, by, col) {
-  const inner       = SW - 60;
+  const inner       = SW - 56;
   const titleLines  = wrap(step.title||"Untitled", inner, 12);
-  const detailLines = step.detail ? wrap(step.detail, inner, 10).slice(0,3) : [];
+  const detailLines = step.detail ? wrap(step.detail, inner, 10) : [];
   const HANDLER_H = step.handler ? 24 : 0;
   const h = Math.max(80,
     34 + titleLines.length*18
-    + (detailLines.length ? detailLines.length*14+6 : 0)
+    + (detailLines.length ? detailLines.length*15+8 : 0)
     + HANDLER_H);
 
   let s = `<filter id="sh${idx}"><feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.08"/></filter>`;
@@ -121,13 +126,13 @@ function optBox(opt, oi, bx, by, topSteps) {
   const c           = OC[oi % 6];
   const inner       = OW - 46;
   const labelLines  = wrap(opt.label||`Option ${oi+1}`, inner, 11);
-  const noteLines   = opt.note ? wrap(opt.note, inner, 10).slice(0,2) : [];
+  const noteLines   = opt.note ? wrap(opt.note, inner, 10) : [];
   const isMerge     = !!opt.mergeToStepId;
   const mergeIdx    = isMerge ? (topSteps||[]).findIndex(s=>s.id===opt.mergeToStepId) : -1;
   const OPT_HANDLER_H = opt.handler ? 20 : 0;
   const h = Math.max(64,
     28 + labelLines.length*15
-    + (noteLines.length ? noteLines.length*13+4 : 0)
+    + (noteLines.length ? noteLines.length*14+4 : 0)
     + (opt.endsFlow||isMerge ? 14 : 0)
     + OPT_HANDLER_H);
 
