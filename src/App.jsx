@@ -30,7 +30,7 @@ const THEMES = {
   },
 };
 
-const ThemeCtx = createContext({ tv: THEMES.light, isDark: false, topLevelSteps: [] });
+const ThemeCtx = createContext({ tv: THEMES.light, isDark: false, topLevelSteps: [], allSops: [] });
 const useTV    = () => useContext(ThemeCtx);
 
 /* ─── Accent colours ─────────────────────────────────────────────────────── */
@@ -88,7 +88,7 @@ const HANDLERS = ["INBOX & TRIAGE SPECIALIST","RESOLUTION SPECIALIST"];
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 const uid    = () => Math.random().toString(36).slice(2,9);
 const mkStep = () => ({id:uid(),title:"",detail:"",important:false,handler:"",options:[]});
-const mkOpt  = () => ({id:uid(),label:"",note:"",handler:"",endsFlow:false,steps:[],mergeToStepId:null});
+const mkOpt  = () => ({id:uid(),label:"",note:"",handler:"",endsFlow:false,steps:[],mergeToStepId:null,linkedSopId:null});
 const pA = (a,id,p) => a.map(x => x.id===id?{...x,...p}:x);
 const rA = (a,id)   => a.filter(x => x.id!==id);
 const mA = (a,id,d) => {
@@ -163,17 +163,28 @@ function HandlerBadge({handler}) {
 
 /* ─── OptionBranch ───────────────────────────────────────────────────────── */
 function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
-  const {tv,isDark}=useTV();
+  const {tv,isDark,topLevelSteps,allSops}=useTV();
   const oc=getOptC(oi,isDark);
-  const [open,   setOpen]   = useState(opt.steps.length>0);
+  const [open,setOpen]      = useState(opt.steps.length>0);
   const [editing,setEditing]= useState(!opt.label);
-  const [draft,  setDraft]  = useState({label:opt.label,note:opt.note,handler:opt.handler||"",endsFlow:opt.endsFlow});
+  const [draft,setDraft]    = useState({
+    label:opt.label, note:opt.note, handler:opt.handler||"",
+    endsFlow:opt.endsFlow, mergeToStepId:opt.mergeToStepId||null,
+    linkedSopId:opt.linkedSopId||null,
+  });
   useEffect(()=>{if(mode==="edit")setOpen(true);},[mode]);
   const set=(k,v)=>setDraft(d=>({...d,[k]:v}));
-  const startEdit=()=>{setDraft({label:opt.label,note:opt.note,handler:opt.handler||"",endsFlow:opt.endsFlow});setEditing(true);};
-  const saveEdit =()=>{onUpdate(draft);setEditing(false);};
+  const startEdit=()=>{
+    setDraft({label:opt.label,note:opt.note,handler:opt.handler||"",
+      endsFlow:opt.endsFlow,mergeToStepId:opt.mergeToStepId||null,
+      linkedSopId:opt.linkedSopId||null});
+    setEditing(true);
+  };
+  const saveEdit=()=>{onUpdate(draft);setEditing(false);};
   const setSubSteps=s=>onUpdate({steps:s});
   const sub=(opt.steps||[]).length;
+  const mergeIdx  = opt.mergeToStepId ? topLevelSteps.findIndex(s=>s.id===opt.mergeToStepId) : -1;
+  const linkedSop = opt.linkedSopId   ? allSops.find(s=>s.id===opt.linkedSopId) : null;
   return (
     <div style={{display:"flex",marginBottom:10}}>
       <div style={{width:3,minWidth:3,background:oc.br,borderRadius:2,marginTop:4,marginRight:10,flexShrink:0}}/>
@@ -187,10 +198,11 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
              </span>
           }
           {!editing&&<HandlerBadge handler={opt.handler}/>}
-          {!editing&&!sub&&opt.endsFlow&&<span style={{fontSize:10,color:tv.t3,fontStyle:"italic",flexShrink:0}}>ends flow</span>}
+          {!editing&&!sub&&opt.endsFlow&&!linkedSop&&<span style={{fontSize:10,color:tv.t3,fontStyle:"italic",flexShrink:0}}>ends flow</span>}
+          {!editing&&mergeIdx>=0&&<span style={{fontSize:10,padding:"1px 6px",background:tv.bg2,color:tv.t2,borderRadius:4,border:`1px solid ${tv.bd}`,flexShrink:0}}>↳ Step {mergeIdx+1}</span>}
           {!editing&&sub>0&&(
             <button onClick={()=>setOpen(v=>!v)} style={{fontSize:10,padding:"2px 8px",background:oc.bg,border:`1px solid ${oc.br}`,color:oc.tx,flexShrink:0}}>
-              <i className={`ti ${open?"ti-chevron-up":"ti-chevron-down"}`} aria-hidden="true"/>{" "}{sub} step{sub>1?"s":""}
+              <i className={`ti ${open?"ti-chevron-up":"ti-chevron-down"}`} aria-hidden="true"/> {sub} step{sub>1?"s":""}
             </button>
           )}
           {mode==="edit"&&(
@@ -202,7 +214,19 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
             </div>
           )}
         </div>
-        {!editing&&opt.note&&<p style={{fontSize:11,color:tv.t2,margin:"3px 0 0 24px",lineHeight:1.55}}>{opt.note}</p>}
+        {!editing&&opt.note&&<p style={{fontSize:11,color:tv.t2,margin:"3px 0 4px 28px",lineHeight:1.55}}>{opt.note}</p>}
+        {/* SOP link badge — view mode */}
+        {!editing&&linkedSop&&(
+          <div style={{margin:"5px 0 3px 28px"}}>
+            <span style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:11,fontWeight:600,
+              padding:"5px 12px",borderRadius:5,
+              background:"#EFF6FF",border:"1.5px solid #3B82F6",color:"#1D4ED8"}}>
+              <i className="ti ti-arrow-right-circle" style={{fontSize:13}} aria-hidden="true"/>
+              Follow: {linkedSop.title}
+              <i className="ti ti-external-link" style={{fontSize:10,opacity:.7}} aria-hidden="true"/>
+            </span>
+          </div>
+        )}
         {editing&&(
           <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8,paddingLeft:28}}>
             <textarea value={draft.note} onChange={e=>set("note",e.target.value)} placeholder="Agent instruction (optional)" rows={2} style={{resize:"vertical"}}/>
@@ -213,15 +237,30 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
               </select>
               <label style={{fontSize:11,color:tv.t2,display:"flex",alignItems:"center",gap:4,cursor:"pointer",whiteSpace:"nowrap"}}>
                 <input type="checkbox" checked={draft.endsFlow} onChange={e=>set("endsFlow",e.target.checked)} style={{width:"auto"}}/>
-                End flow after branch
+                End flow
               </label>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <label style={{fontSize:11,color:tv.t2,whiteSpace:"nowrap",minWidth:80}}>↳ Merge to:</label>
+              <select value={draft.mergeToStepId||""} onChange={e=>set("mergeToStepId",e.target.value||null)} style={{flex:1}}>
+                <option value="">— No merge point —</option>
+                {topLevelSteps.map((s,i)=><option key={s.id} value={s.id}>Step {i+1}: {s.title||"Untitled"}</option>)}
+              </select>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 10px",background:"#EFF6FF",borderRadius:5,border:"1px solid #BFDBFE"}}>
+              <i className="ti ti-arrow-right-circle" style={{fontSize:14,color:"#3B82F6",flexShrink:0}} aria-hidden="true"/>
+              <label style={{fontSize:11,color:"#1D4ED8",fontWeight:600,whiteSpace:"nowrap"}}>→ Follow SOP:</label>
+              <select value={draft.linkedSopId||""} onChange={e=>set("linkedSopId",e.target.value||null)} style={{flex:1}}>
+                <option value="">— No SOP link —</option>
+                {allSops.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
+              </select>
             </div>
           </div>
         )}
         {mode==="edit"&&!editing&&(
           <button onClick={()=>setOpen(v=>!v)} style={{fontSize:10,marginTop:4,marginLeft:24,background:oc.bg,border:`1px solid ${oc.br}`,color:oc.tx}}>
-            <i className={`ti ${open?"ti-chevron-up":"ti-chevron-down"}`} aria-hidden="true"/>{" "}
-            {open?`Hide steps (${sub})`:sub>0?`Show steps (${sub})`:"Add steps to this branch"}
+            <i className={`ti ${open?"ti-chevron-up":"ti-chevron-down"}`} aria-hidden="true"/>
+            {" "}{open?`Hide steps (${sub})`:sub>0?`Show steps (${sub})`:"Add steps to this branch"}
           </button>
         )}
         {open&&(
@@ -387,6 +426,7 @@ export default function SOPTool() {
   const [delConfirm,   setDelConfirm]   = useState(null);
   const [hoveredSopId, setHoveredSopId] = useState(null);
   const [exporting,    setExporting]    = useState(false);
+  const [copied,       setCopied]       = useState(false);
   /* Theme — persisted in localStorage */
   const [theme, setTheme] = useState(()=>localStorage.getItem("sop-theme")||"light");
   useEffect(()=>{ localStorage.setItem("sop-theme",theme); },[theme]);
@@ -420,10 +460,14 @@ export default function SOPTool() {
   const _updateMut = useMutation(api.sops.update);
   const _removeMut = useMutation(api.sops.remove);
 
-  /* Auto-select first SOP once data arrives */
+  /* Auto-select from URL hash, or first SOP */
   useEffect(()=>{
-    if(!selId && sops.length>0) setSelId(sops[0].id);
-  },[sops.length, selId]);
+    if(!sops.length) return;
+    const m=window.location.hash.match(/^#\/sop\/(.+)$/);
+    if(m){ const f=sops.find(s=>s.id===m[1]); if(f){setSelId(f.id);return;} }
+    if(!selId) setSelId(sops[0].id);
+  },[sops.length]);
+  const selectSop=(id)=>{ setSelId(id); setMode("view"); window.history.pushState(null,"",`#/sop/${id}`); };
 
   /* Derived */
   const sel      = sops.find(s=>s.id===selId);
@@ -474,7 +518,7 @@ export default function SOPTool() {
   };
   const curFrame = stack.length?stack[stack.length-1]:null;
   const curStep  = !ended&&curFrame?curFrame.steps[curFrame.index]:null;
-  const saveH    = ()=>setHist(h=>[...h,{stack,ended,endNote}]);
+  const saveH    = ()=>setHist(h=>[...h,{stack,ended,endNote,prevSelId:selId}]);
   const chooseOpt = opt=>{
     saveH();
     const topSteps=sel?.steps||[];
@@ -484,6 +528,14 @@ export default function SOPTool() {
         endNote:opt.note||"Branch ended.",
         mergeToStepId:opt.mergeToStepId||null}]);
       setEnded(false); setEndNote("");
+    } else if(opt.linkedSopId){
+      const target=sops.find(s=>s.id===opt.linkedSopId);
+      if(target?.steps?.length){
+        saveH();
+        setSelId(target.id); window.history.pushState(null,"",`#/sop/${target.id}`);
+        setStack([{steps:target.steps,index:0,optionLabel:null,endsFlow:true,endNote:"All steps completed.",mergeToStepId:null}]);
+        setEnded(false); setEndNote("");
+      }
     } else if(opt.mergeToStepId){
       const idx=topSteps.findIndex(s=>s.id===opt.mergeToStepId);
       if(idx>=0){
@@ -499,7 +551,9 @@ export default function SOPTool() {
   const goNext=()=>{saveH();const r=advStack(stack,sel?.steps||[]);setStack(r.s);setEnded(r.e);setEndNote(r.n);};
   const goBack=()=>{
     if(!hist.length)return;
-    const p=hist[hist.length-1];setStack(p.stack);setEnded(p.ended);setEndNote(p.endNote);
+    const p=hist[hist.length-1];
+    setStack(p.stack);setEnded(p.ended);setEndNote(p.endNote);
+    if(p.prevSelId&&p.prevSelId!==selId){setSelId(p.prevSelId);window.history.pushState(null,"",`#/sop/${p.prevSelId}`);}
     setHist(h=>h.slice(0,-1));
   };
   const breadcrumb=stack.filter(f=>f.optionLabel).map(f=>f.optionLabel);
@@ -536,7 +590,7 @@ export default function SOPTool() {
               const c=getSopC(s.color,isDark),isSel=s.id===selId,isHov=hoveredSopId===s.id;
               return (
                 <div key={s.id}
-                  onClick={()=>{setSelId(s.id);setMode("view");}}
+                  onClick={()=>selectSop(s.id)}
                   onMouseEnter={()=>setHoveredSopId(s.id)}
                   onMouseLeave={()=>setHoveredSopId(null)}
                   style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",marginBottom:2,borderRadius:6,cursor:"pointer",position:"relative",background:isSel?`${c.br}15`:"transparent",border:isSel?`1px solid ${c.br}30`:"1px solid transparent"}}>
@@ -646,7 +700,8 @@ export default function SOPTool() {
                           {curStep.options.map((opt,oi)=>{
                             const oc=getOptC(oi,isDark);
                             const mergeI=opt.mergeToStepId?(sel?.steps||[]).findIndex(s=>s.id===opt.mergeToStepId):-1;
-                            const tag=opt.mergeToStepId&&mergeI>=0?`↳ merges to Step ${mergeI+1}`:opt.steps?.length>0?`→ ${opt.steps.length} follow-up step${opt.steps.length>1?"s":""}`:opt.endsFlow?"→ ends flow":"→ continues";
+                            const _lsn=opt.linkedSopId?sops.find(s=>s.id===opt.linkedSopId)?.title:null;
+                            const tag=_lsn?`→ Follow: ${_lsn}`:opt.mergeToStepId&&mergeI>=0?`↳ merges to Step ${mergeI+1}`:opt.steps?.length>0?`→ ${opt.steps.length} follow-up step${opt.steps.length>1?"s":""}`:opt.endsFlow?"→ ends flow":"→ continues";
                             return (
                               <button key={opt.id} onClick={()=>chooseOpt(opt)}
                                 style={{textAlign:"left",padding:"10px 14px",background:oc.bg,border:`1px solid ${oc.br}40`,borderRadius:6,cursor:"pointer"}}>
@@ -694,6 +749,17 @@ export default function SOPTool() {
                   }
                   <button onClick={startFollow} style={{fontSize:12,background:`${col.br}15`,border:`1px solid ${col.br}40`,color:col.br}}>
                     <i className="ti ti-player-play" aria-hidden="true"/> Follow
+                  </button>
+                  <button
+                    onClick={()=>{
+                      const url=`${window.location.origin}${window.location.pathname}#/sop/${sel.id}`;
+                      navigator.clipboard.writeText(url).then(()=>{setCopied(true);setTimeout(()=>setCopied(false),2000);});
+                    }}
+                    title="Copy direct link to this SOP"
+                    style={{fontSize:12}}
+                  >
+                    <i className={`ti ${copied?"ti-check":"ti-link"}`} aria-hidden="true"/>
+                    {copied?" Copied":" Link"}
                   </button>
                   <button
                     onClick={async()=>{
