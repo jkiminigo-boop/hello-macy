@@ -97,7 +97,8 @@ const mA = (a,id,d) => {
   const b=[...a];[b[i],b[j]]=[b[j],b[i]];return b;
 };
 const parseSteps = (json) => {
-  try { return JSON.parse(json||"[]"); } catch { return []; }
+  try { const r=JSON.parse(json||"[]"); return Array.isArray(r)?r:[]; }
+  catch { return []; }
 };
 const advStack = (s, topSteps=[]) => {
   if(!s.length) return {s:[],e:true,n:"All steps completed."};
@@ -163,9 +164,9 @@ function HandlerBadge({handler}) {
 
 /* ─── OptionBranch ───────────────────────────────────────────────────────── */
 function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
-  const {tv,isDark,topLevelSteps,allSops}=useTV();
+  const _ctx=useTV(), tv=_ctx.tv, isDark=_ctx.isDark, topLevelSteps=_ctx.topLevelSteps||[], allSops=_ctx.allSops||[];
   const oc=getOptC(oi,isDark);
-  const [open,setOpen]      = useState(opt.steps.length>0);
+  const [open,setOpen]      = useState((opt.steps?.length||0)>0);
   const [editing,setEditing]= useState(!opt.label);
   const [draft,setDraft]    = useState({
     label:opt.label, note:opt.note, handler:opt.handler||"",
@@ -182,7 +183,7 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
   };
   const saveEdit=()=>{onUpdate(draft);setEditing(false);};
   const setSubSteps=s=>onUpdate({steps:s});
-  const sub=(opt.steps||[]).length;
+  const sub=opt.steps?.length||0;
   const mergeIdx  = opt.mergeToStepId ? topLevelSteps.findIndex(s=>s.id===opt.mergeToStepId) : -1;
   const linkedSop = opt.linkedSopId   ? allSops.find(s=>s.id===opt.linkedSopId) : null;
   return (
@@ -244,7 +245,7 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
               <label style={{fontSize:11,color:tv.t2,whiteSpace:"nowrap",minWidth:80}}>↳ Merge to:</label>
               <select value={draft.mergeToStepId||""} onChange={e=>set("mergeToStepId",e.target.value||null)} style={{flex:1}}>
                 <option value="">— No merge point —</option>
-                {topLevelSteps.map((s,i)=><option key={s.id} value={s.id}>Step {i+1}: {s.title||"Untitled"}</option>)}
+                {(topLevelSteps||[]).map((s,i)=><option key={s.id} value={s.id}>Step {i+1}: {s.title||"Untitled"}</option>)}
               </select>
             </div>
             <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 10px",background:"#EFF6FF",borderRadius:5,border:"1px solid #BFDBFE"}}>
@@ -252,7 +253,7 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
               <label style={{fontSize:11,color:"#1D4ED8",fontWeight:600,whiteSpace:"nowrap"}}>→ Follow SOP:</label>
               <select value={draft.linkedSopId||""} onChange={e=>set("linkedSopId",e.target.value||null)} style={{flex:1}}>
                 <option value="">— No SOP link —</option>
-                {allSops.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
+                {(allSops||[]).map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
               </select>
             </div>
           </div>
@@ -281,7 +282,7 @@ function StepBlock({step,idx,col,mode,onUpdate,onDelete,onUp,onDown}) {
   const set=(k,v)=>setDraft(d=>({...d,[k]:v}));
   const startEdit=()=>{setDraft({title:step.title,detail:step.detail,important:!!step.important,handler:step.handler||""});setIsEditing(true);};
   const saveEdit =()=>{onUpdate(draft);setIsEditing(false);};
-  const opts=step.options||[];
+  const opts=Array.isArray(step.options)?step.options:[];
   const hc=step.handler?getHdlC(step.handler,isDark):null;
   const stepBg=isDark?`${col.br}12`:col.bg;
   return (
@@ -357,7 +358,7 @@ function StepBlock({step,idx,col,mode,onUpdate,onDelete,onUp,onDown}) {
 
 /* ─── StepsList ──────────────────────────────────────────────────────────── */
 function StepsList({steps,setSteps,col,mode}) {
-  const s=steps||[];
+  const s=Array.isArray(steps)?steps:[];
   return (
     <div>
       {s.map((step,i)=>(
@@ -697,7 +698,7 @@ export default function SOPTool() {
                       <div>
                         <p style={{fontSize:10,color:tv.t3,marginBottom:8,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase"}}>Customer response:</p>
                         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                          {curStep.options.map((opt,oi)=>{
+                          {(curStep.options||[]).map((opt,oi)=>{
                             const oc=getOptC(oi,isDark);
                             const mergeI=opt.mergeToStepId?(sel?.steps||[]).findIndex(s=>s.id===opt.mergeToStepId):-1;
                             const _lsn=opt.linkedSopId?sops.find(s=>s.id===opt.linkedSopId)?.title:null;
