@@ -88,7 +88,28 @@ const HANDLERS = ["INBOX & TRIAGE SPECIALIST","RESOLUTION SPECIALIST"];
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 const uid    = () => Math.random().toString(36).slice(2,9);
 const mkStep = () => ({id:uid(),title:"",detail:"",important:false,handler:"",options:[]});
-const mkOpt  = () => ({id:uid(),label:"",note:"",handler:"",endsFlow:false,steps:[],mergeToStepId:null,linkedSopId:null});
+const mkOpt  = () => ({id:uid(),label:"",note:"",handler:"",endsFlow:false,steps:[],mergeToStepId:null,linkedSopId:null,linkedBranchId:null});
+const getAllBranches=(steps,path="")=>{
+  const r=[];
+  (steps||[]).forEach((step,si)=>{
+    const sp=path?`${path} > Sub-step ${si+1}`:`Step ${si+1}`;
+    (step.options||[]).forEach((opt,oi)=>{
+      r.push({id:opt.id,label:`${sp}, Branch ${oi+1}: "${opt.label||"Unnamed"}"`,opt});
+      if(opt.steps?.length) r.push(...getAllBranches(opt.steps,`${sp} > Branch ${oi+1}`));
+    });
+  });
+  return r;
+};
+const findOptById=(steps,id)=>{
+  for(const step of (steps||[])){
+    for(const opt of (step.options||[])){
+      if(opt.id===id) return opt;
+      const f=findOptById(opt.steps||[],id);
+      if(f) return f;
+    }
+  }
+  return null;
+};
 const pA = (a,id,p) => a.map(x => x.id===id?{...x,...p}:x);
 const rA = (a,id)   => a.filter(x => x.id!==id);
 const mA = (a,id,d) => {
@@ -171,21 +192,23 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
   const [draft,setDraft]    = useState({
     label:opt.label, note:opt.note, handler:opt.handler||"",
     endsFlow:opt.endsFlow, mergeToStepId:opt.mergeToStepId||null,
-    linkedSopId:opt.linkedSopId||null,
+    linkedSopId:opt.linkedSopId||null, linkedBranchId:opt.linkedBranchId||null,
   });
   useEffect(()=>{if(mode==="edit")setOpen(true);},[mode]);
   const set=(k,v)=>setDraft(d=>({...d,[k]:v}));
   const startEdit=()=>{
     setDraft({label:opt.label,note:opt.note,handler:opt.handler||"",
       endsFlow:opt.endsFlow,mergeToStepId:opt.mergeToStepId||null,
-      linkedSopId:opt.linkedSopId||null});
+      linkedSopId:opt.linkedSopId||null,linkedBranchId:opt.linkedBranchId||null});
     setEditing(true);
   };
   const saveEdit=()=>{onUpdate(draft);setEditing(false);};
   const setSubSteps=s=>onUpdate({steps:s});
   const sub=opt.steps?.length||0;
   const mergeIdx  = opt.mergeToStepId ? topLevelSteps.findIndex(s=>s.id===opt.mergeToStepId) : -1;
-  const linkedSop = opt.linkedSopId   ? allSops.find(s=>s.id===opt.linkedSopId) : null;
+  const linkedSop    = opt.linkedSopId    ? allSops.find(s=>s.id===opt.linkedSopId) : null;
+  const _allBranches = getAllBranches(topLevelSteps);
+  const linkedBranch = opt.linkedBranchId ? _allBranches.find(b=>b.id===opt.linkedBranchId) : null;
   return (
     <div style={{display:"flex",marginBottom:10}}>
       <div style={{width:3,minWidth:3,background:oc.br,borderRadius:2,marginTop:4,marginRight:10,flexShrink:0}}/>
@@ -199,7 +222,7 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
              </span>
           }
           {!editing&&<HandlerBadge handler={opt.handler}/>}
-          {!editing&&!sub&&opt.endsFlow&&!linkedSop&&<span style={{fontSize:10,color:tv.t3,fontStyle:"italic",flexShrink:0}}>ends flow</span>}
+          {!editing&&!sub&&opt.endsFlow&&!linkedSop&&!linkedBranch&&<span style={{fontSize:10,color:tv.t3,fontStyle:"italic",flexShrink:0}}>ends flow</span>}
           {!editing&&mergeIdx>=0&&<span style={{fontSize:10,padding:"1px 6px",background:tv.bg2,color:tv.t2,borderRadius:4,border:`1px solid ${tv.bd}`,flexShrink:0}}>↳ Step {mergeIdx+1}</span>}
           {!editing&&sub>0&&(
             <button onClick={()=>setOpen(v=>!v)} style={{fontSize:10,padding:"2px 8px",background:oc.bg,border:`1px solid ${oc.br}`,color:oc.tx,flexShrink:0}}>
@@ -216,6 +239,15 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
           )}
         </div>
         {!editing&&opt.note&&<p style={{fontSize:11,color:tv.t2,margin:"3px 0 4px 28px",lineHeight:1.55,whiteSpace:"pre-wrap"}}>{opt.note}</p>}
+        {!editing&&linkedBranch&&(
+          <div style={{margin:"5px 0 3px 28px"}}>
+            <span style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:11,fontWeight:600,
+              padding:"5px 12px",borderRadius:5,background:"#F0FDF4",border:"1.5px solid #16A34A",color:"#15803D"}}>
+              <i className="ti ti-git-branch" style={{fontSize:13}} aria-hidden="true"/>
+              Follow branch: {linkedBranch.opt?.label||"(unnamed)"}
+            </span>
+          </div>
+        )}
         {/* SOP link badge — view mode */}
         {!editing&&linkedSop&&(
           <div style={{margin:"5px 0 3px 28px"}}>
@@ -254,6 +286,16 @@ function OptionBranch({opt,oi,mode,onUpdate,onDelete}) {
               <select value={draft.linkedSopId||""} onChange={e=>set("linkedSopId",e.target.value||null)} style={{flex:1}}>
                 <option value="">— No SOP link —</option>
                 {(allSops||[]).map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
+              </select>
+            </div>
+            <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 10px",background:"#F0FDF4",borderRadius:5,border:"1px solid #BBF7D0"}}>
+              <i className="ti ti-git-branch" style={{fontSize:14,color:"#16A34A",flexShrink:0}} aria-hidden="true"/>
+              <label style={{fontSize:11,color:"#15803D",fontWeight:600,whiteSpace:"nowrap"}}>↪ Same SOP branch:</label>
+              <select value={draft.linkedBranchId||""} onChange={e=>set("linkedBranchId",e.target.value||null)} style={{flex:1}}>
+                <option value="">— No branch link —</option>
+                {getAllBranches(topLevelSteps).filter(b=>b.id!==opt.id).map(b=>(
+                  <option key={b.id} value={b.id}>{b.label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -537,6 +579,18 @@ export default function SOPTool() {
         setStack([{steps:target.steps,index:0,optionLabel:null,endsFlow:true,endNote:"All steps completed.",mergeToStepId:null}]);
         setEnded(false); setEndNote("");
       }
+    } else if(opt.linkedBranchId){
+      const target=findOptById(topSteps,opt.linkedBranchId);
+      if(target?.steps?.length){
+        setStack(s=>[...s,{steps:target.steps,index:0,
+          optionLabel:`↪ ${target.label||"branch"}`,
+          endsFlow:target.endsFlow&&!target.mergeToStepId,
+          endNote:target.note||"Branch ended.",
+          mergeToStepId:target.mergeToStepId||null}]);
+        setEnded(false); setEndNote("");
+      } else {
+        const r=advStack(stack,topSteps); setStack(r.s); setEnded(r.e); setEndNote(r.n);
+      }
     } else if(opt.mergeToStepId){
       const idx=topSteps.findIndex(s=>s.id===opt.mergeToStepId);
       if(idx>=0){
@@ -702,10 +756,11 @@ export default function SOPTool() {
                             const oc=getOptC(oi,isDark);
                             const mergeI=opt.mergeToStepId?(sel?.steps||[]).findIndex(s=>s.id===opt.mergeToStepId):-1;
                             const _lsn=opt.linkedSopId?sops.find(s=>s.id===opt.linkedSopId)?.title:null;
-                            const tag=_lsn?`→ Follow: ${_lsn}`:opt.mergeToStepId&&mergeI>=0?`↳ merges to Step ${mergeI+1}`:opt.steps?.length>0?`→ ${opt.steps.length} follow-up step${opt.steps.length>1?"s":""}`:opt.endsFlow?"→ ends flow":"→ continues";
+                            const _lbn=opt.linkedBranchId?getAllBranches(sel?.steps||[]).find(b=>b.id===opt.linkedBranchId):null;
+                            const tag=_lsn?`→ Follow SOP: ${_lsn}`:_lbn?`↪ Follow branch: ${_lbn.opt?.label||"branch"}`:opt.mergeToStepId&&mergeI>=0?`↳ merges to Step ${mergeI+1}`:opt.steps?.length>0?`→ ${opt.steps.length} follow-up step${opt.steps.length>1?"s":""}`:opt.endsFlow?"→ ends flow":"→ continues";
                             return (
                               <button key={opt.id} onClick={()=>chooseOpt(opt)}
-                                style={{textAlign:"left",padding:"10px 14px",background:oc.bg,border:`1px solid ${oc.br}40`,borderRadius:6,cursor:"pointer"}}>
+                                style={{textAlign:"left",padding:"10px 14px",background:opt.linkedSopId?"#EFF6FF":opt.linkedBranchId?"#F0FDF4":oc.bg,border:opt.linkedSopId?"1.5px solid #3B82F6":opt.linkedBranchId?"1.5px solid #16A34A":`1px solid ${oc.br}40`,borderRadius:6,cursor:"pointer"}}>
                                 <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
                                   <span style={{width:18,height:18,minWidth:18,borderRadius:"50%",background:oc.num,display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:700,marginTop:1,flexShrink:0}}>{oi+1}</span>
                                   <div style={{flex:1}}>
